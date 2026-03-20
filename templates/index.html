@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>楽天トラベル 空室チェック（ローカル）</title>
+  <style>
+    :root {
+      --bg: #f4f2ef;
+      --card: #fff;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #bf0000;
+      --border: #e0dcd6;
+      --ok: #0d6b3e;
+      --err: #a40000;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 44rem; margin: 0 auto; }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+      letter-spacing: -0.02em;
+    }
+    .sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.25rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: #333;
+    }
+    .hint { font-weight: 400; color: var(--muted); font-size: 0.75rem; }
+    input[type="text"],
+    input[type="date"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9375rem;
+      margin-bottom: 0.9rem;
+    }
+    input:focus {
+      outline: 2px solid rgba(191,0,0,.25);
+      border-color: var(--accent);
+    }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
+    .chk {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin: 0.5rem 0 1rem;
+      font-size: 0.875rem;
+    }
+    .chk input { margin-top: 0.2rem; }
+    button[type="submit"] {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button[type="submit"]:hover { filter: brightness(1.06); }
+    .banner {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .banner.err { background: #fde8e8; color: var(--err); border: 1px solid #f5c2c2; }
+    .banner.ok { background: #e8f5ee; color: var(--ok); border: 1px solid #b8dfc8; }
+    .banner.info { background: #eef2f7; color: #334; border: 1px solid #ccd4e0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; }
+    .num { white-space: nowrap; text-align: right; }
+    a { color: var(--accent); }
+    .plan-title { font-weight: 700; margin-bottom: 0.25rem; }
+    .plan-lines { color: #333; font-size: 0.8125rem; line-height: 1.35; }
+    .plan-line { margin-top: 0.15rem; color: var(--muted); }
+    .hotel-ac { position: relative; margin-bottom: 0.35rem; }
+    .hotel-ac input[type="text"] { margin-bottom: 0.35rem; }
+    .hotel-ac ul {
+      position: absolute; z-index: 20; left: 0; right: 0;
+      max-height: 280px; overflow-y: auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; margin: 0; padding: 0; list-style: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,.1);
+    }
+    .hotel-ac li {
+      padding: 0.55rem 0.7rem; cursor: pointer; font-size: 0.875rem;
+      border-bottom: 1px solid #f0eeeb; line-height: 1.35;
+    }
+    .hotel-ac li:last-child { border-bottom: none; }
+    .hotel-ac li:hover, .hotel-ac li.active { background: #faf7f4; }
+    .hotel-ac .h-name { font-weight: 600; color: var(--text); }
+    .hotel-ac .h-meta { color: var(--muted); font-size: 0.72rem; margin-top: 0.2rem; display: block; }
+    .hotel-ac .h-err { padding: 0.5rem 0.7rem; color: var(--err); font-size: 0.8125rem; }
+    .hotel-ac .h-muted { padding: 0.5rem 0.7rem; color: var(--muted); font-size: 0.8125rem; }
+    .picked {
+      display: none; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; background: #faf8f6; border: 1px solid var(--border);
+      border-radius: 6px; margin-bottom: 0.9rem; font-size: 0.875rem;
+    }
+    .picked.show { display: flex; }
+    .picked .pn { font-weight: 600; }
+    .picked .subno { color: var(--muted); font-size: 0.75rem; display: block; margin-top: 0.2rem; }
+    .btn-text {
+      background: none; border: none; color: var(--accent); cursor: pointer;
+      font-size: 0.8125rem; padding: 0.15rem 0; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-text:hover { text-decoration: underline; }
+    .manual-row { margin-bottom: 0.9rem; }
+    .manual-row label { margin-bottom: 0.35rem; }
+    .sr-hint { font-size: 0.75rem; color: var(--muted); margin: 0 0 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>楽天トラベル 空室チェック</h1>
+    <p class="sub">ローカル専用 · .env の楽天 API キーを使用します</p>
+
+    {% if form_error %}
+    <div class="banner err">{{ form_error }}</div>
+    {% endif %}
+
+    <div class="card">
+      <form method="post" action="{{ url_for('index') }}" id="vacancy_form">
+        <input type="hidden" name="hotel_no" id="hotel_no" value="{{ form_values.hotel_no }}">
+        <input type="hidden" name="hotel_label" id="hotel_label" value="{{ form_values.hotel_label }}">
+
+        <label for="hotel_keyword">施設をキーワードで検索 <span class="hint">（2文字以上・施設名の一部）</span></label>
+        <p class="sr-hint">例: 「インターコンチ」「コンチネンタル」→ 候補からタップして選択</p>
+        <div class="hotel-ac" id="hotel_ac_wrap">
+          <input type="text" id="hotel_keyword" autocomplete="off" placeholder="ホテル名の一部を入力…" value="">
+          <ul id="hotel_suggest_list" style="display:none" role="listbox" aria-label="施設候補"></ul>
+        </div>
+        <div id="hotel_suggest_status" class="hint" style="display:none; margin-top:-0.15rem; margin-bottom:0.75rem;"></div>
+
+        <div class="picked" id="hotel_picked" role="status">
+          <div>
+            <span class="pn" id="hotel_picked_title"></span>
+            <span class="subno" id="hotel_picked_sub"></span>
+          </div>
+          <button type="button" class="btn-text" id="hotel_clear">選び直す</button>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="checkin_date">チェックイン</label>
+            <input type="date" id="checkin_date" name="checkin_date" value="{{ form_values.checkin_date }}">
+            <div class="hint" style="margin-top: -0.35rem; margin-bottom: 0.75rem;">
+              未入力の場合は今日+75〜今日+90で探索します
+            </div>
+          </div>
+          <div>
+            <label for="stay_nights">宿泊数（泊）</label>
+            <input type="number" id="stay_nights" name="stay_nights" min="1" max="30" value="{{ form_values.stay_nights }}" required>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="adult_num">大人の人数</label>
+            <input type="number" id="adult_num" name="adult_num" min="1" max="10" value="{{ form_values.adult_num }}">
+          </div>
+          <div>
+            <label for="room_num">部屋数</label>
+            <input type="number" id="room_num" name="room_num" min="1" max="10" value="{{ form_values.room_num }}">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="up_class_num">子ども（小学生高学年）人数</label>
+            <input type="number" id="up_class_num" name="up_class_num" min="0" max="10" value="{{ form_values.up_class_num }}">
+          </div>
+          <div>
+            <label for="low_class_num">子ども（小学生低学年）人数</label>
+            <input type="number" id="low_class_num" name="low_class_num" min="0" max="10" value="{{ form_values.low_class_num }}">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="infant_with_mb_num">幼児（食事・布団付）人数</label>
+            <input type="number" id="infant_with_mb_num" name="infant_with_mb_num" min="0" max="10" value="{{ form_values.infant_with_mb_num }}">
+          </div>
+          <div>
+            <label for="infant_with_m_num">幼児（食事のみ）人数</label>
+            <input type="number" id="infant_with_m_num" name="infant_with_m_num" min="0" max="10" value="{{ form_values.infant_with_m_num }}">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="infant_with_b_num">幼児（布団のみ）人数</label>
+            <input type="number" id="infant_with_b_num" name="infant_with_b_num" min="0" max="10" value="{{ form_values.infant_with_b_num }}">
+          </div>
+          <div>
+            <label for="infant_without_mb_num">幼児（食事・布団不要）人数</label>
+            <input type="number" id="infant_without_mb_num" name="infant_without_mb_num" min="0" max="10" value="{{ form_values.infant_without_mb_num }}">
+          </div>
+        </div>
+
+        <label for="plan_keyword">プラン名キーワード <span class="hint">（任意・部分一致）</span></label>
+        <input type="text" id="plan_keyword" name="plan_keyword" value="{{ form_values.plan_keyword }}" placeholder="例: 朝食">
+
+        <div class="chk">
+          <input type="checkbox" id="send_notify" name="send_notify" value="1">
+          <label for="send_notify" style="margin:0;font-weight:500">空室があった場合、.env の設定で LINE / メール通知も送る</label>
+        </div>
+
+        <button type="submit">空室を検索</button>
+      </form>
+    </div>
+    <div id="search_progress" style="display:none; margin-top:1rem; padding:0.75rem 0.9rem; border-radius:8px; background:#eef2f7; color:#334; border:1px solid #ccd4e0;">
+      <div style="font-weight:700; margin-bottom:0.5rem;">検索中…</div>
+      <pre id="search_progress_log" style="white-space:pre-wrap; margin:0; font-size:0.85rem; max-height:260px; overflow:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></pre>
+    </div>
+    {% if result %}
+    <div id="result_area">
+      {% if not result.ok %}
+      <div class="banner err">API エラー: {{ result.error }}</div>
+      {% elif not result.plans %}
+      <div class="banner info">指定条件では空室は見つかりませんでした。</div>
+      {% else %}
+      <div class="banner ok">
+        空室あり: <strong>{{ result.plans[0].hotelName | default('（施設名不明）', true) }}</strong>
+        — {% if result.plan_groups %}{{ result.plan_groups | length }} 件のプラン{% else %}{{ result.plans | length }} 件のプラン{% endif %}
+        {% if result.checkin_was_blank %}
+          <br><span style="color:var(--muted)">チェックイン日未定のため、{{ result.checkin | default('—') }} を目安に探索しています</span>
+        {% endif %}
+        {% if result.notify %}
+          {% if result.notify.sent %}
+          <br><span style="font-weight:600">通知を送信しました。</span>
+          {% elif result.notify.reason %}
+          <br><span style="color:var(--muted)">{{ result.notify.reason }}</span>
+          {% else %}
+          <br><span style="color:var(--err)">通知の送信に失敗しました。トークン・SMTP を確認してください。</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div class="card">
+        <div>
+          {% if result.plan_groups %}
+            {% for g in result.plan_groups %}
+              <div class="plan-group" style="padding: 0.65rem 0; border-bottom: 1px solid var(--border);">
+                <div class="plan-title" style="margin-bottom: 0.35rem;">{{ g.planName }}</div>
+                <div class="plan-lines" style="font-size: 0.875rem;">
+                  {% for it in g['items'] %}
+                    <label class="plan-line" style="margin-top: 0.2rem; color: #333; display:block;">
+                      <input
+                        type="checkbox"
+                        class="watch_check"
+                        data-hotel-no="{{ it.hotelNo | default('') }}"
+                        data-plan-id="{{ it.planId | default('') }}"
+                        data-room-class="{{ it.roomClass | default('') }}"
+                        data-meal-text="{{ it.mealText | default('') }}"
+                        data-plan-name="{{ g.planName | default('') }}"
+                        data-room-name="{{ it.roomName | default('') }}"
+                        data-plan-list-url="{{ it.planListUrl | default('') }}"
+                      >
+                      食事: {{ it.mealText | default('—') }}　部屋: {{ it.roomName | default('—') }}
+                    </label>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            {# 念のためのフォールバック（plan_groups が無い場合） #}
+            <table>
+              <thead>
+                <tr>
+                  <th>プラン（詳細）</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in result.plans %}
+                <tr>
+                  <td>
+                    <div class="plan-title">{{ p.planName }}</div>
+                    <div class="plan-lines">
+                      <div class="plan-line">食事: {{ p.mealText | default('—') }}</div>
+                      <div class="plan-line">部屋: {{ p.roomName | default('—') }}</div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+        </div>
+        {% if result.plan_groups %}
+        <div id="watch_save_container" style="margin-top:1rem;">
+          <button type="button" id="watch_save_btn" class="btn-text" style="padding:0.5rem 0.8rem; border-radius:10px; border:1px solid var(--border); color:var(--accent); background:transparent; cursor:pointer;">
+            選択したプランを監視に追加
+          </button>
+          <div id="preferred_dates_panel" style="margin-top:0.9rem; padding-top:0.65rem; border-top:1px dashed var(--border);">
+            <div style="font-weight:600; margin-bottom:0.35rem;">希望チェックイン日（固定日を指定・任意・複数可）</div>
+            <div id="preferred_dates_list" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+              <input type="date" class="preferred_date_input" value="">
+            </div>
+            <div style="margin-top:0.5rem;">
+              <button type="button" id="preferred_dates_add_btn" class="btn-text" style="padding:0.35rem 0.6rem; border-radius:9px; border:1px solid var(--border); color:var(--accent); background:transparent; cursor:pointer;">
+                日付を追加
+              </button>
+              <span class="hint" style="margin-left:0.75rem;">空欄の場合は日付レンジ探索で判定します</span>
+            </div>
+          </div>
+          <span id="watch_save_status" class="hint" style="margin-left:0.75rem; display:inline-block;"></span>
+        </div>
+        {% endif %}
+        {% if result.plans[0].planListUrl %}
+        <p style="margin-top:1rem;font-size:0.875rem"><a href="{{ result.plans[0].planListUrl }}" target="_blank" rel="noopener">楽天トラベルでプラン一覧を開く</a></p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <script>
+      (function () {
+        var el = document.getElementById('result_area');
+        if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+      })();
+    </script>
+    {% endif %}
+  </div>
+  <script>
+(function () {
+  var hotelNo = document.getElementById('hotel_no');
+  var hotelLabel = document.getElementById('hotel_label');
+  var keyword = document.getElementById('hotel_keyword');
+  var listEl = document.getElementById('hotel_suggest_list');
+  var statusEl = document.getElementById('hotel_suggest_status');
+  var picked = document.getElementById('hotel_picked');
+  var pickedTitle = document.getElementById('hotel_picked_title');
+  var pickedSub = document.getElementById('hotel_picked_sub');
+  var clearBtn = document.getElementById('hotel_clear');
+  var form = document.getElementById('vacancy_form');
+  var timer = null;
+  var activeIdx = -1;
+  var lastItems = [];
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function showPicked(no, name) {
+    if (!no) {
+      picked.classList.remove('show');
+      pickedTitle.textContent = '';
+      pickedSub.textContent = '';
+      return;
+    }
+    if (name) {
+      pickedTitle.textContent = name;
+      pickedSub.textContent = '施設番号: ' + no;
+    } else {
+      pickedTitle.textContent = '施設番号: ' + no;
+      pickedSub.textContent = '';
+    }
+    picked.classList.add('show');
+  }
+
+  if (hotelNo.value) {
+    showPicked(hotelNo.value, hotelLabel.value || '');
+  }
+
+  function hideList() {
+    listEl.style.display = 'none';
+    listEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    statusEl.textContent = '';
+    activeIdx = -1;
+    lastItems = [];
+  }
+
+  function renderList(items, extraMsg, isError) {
+    activeIdx = -1;
+    listEl.innerHTML = '';
+    if (extraMsg) {
+      var li0 = document.createElement('li');
+      li0.className = isError ? 'h-err' : 'h-muted';
+      li0.textContent = extraMsg;
+      listEl.appendChild(li0);
+    }
+    items.forEach(function (h, i) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.dataset.idx = String(i);
+      li.innerHTML = '<span class="h-name">' + esc(h.hotelName || '（名称なし）') + '</span>' +
+        (h.address ? '<span class="h-meta">' + esc(h.address) + '</span>' : '');
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        selectHotel(h);
+      });
+      listEl.appendChild(li);
+    });
+    listEl.style.display = items.length || extraMsg ? 'block' : 'none';
+    lastItems = items;
+  }
+
+  function selectHotel(h) {
+    hotelNo.value = h.hotelNo;
+    hotelLabel.value = h.hotelName || '';
+    keyword.value = '';
+    hideList();
+    showPicked(h.hotelNo, h.hotelName || '');
+  }
+
+  clearBtn.addEventListener('click', function () {
+    hotelNo.value = '';
+    hotelLabel.value = '';
+    keyword.value = '';
+    hideList();
+    picked.classList.remove('show');
+    keyword.focus();
+  });
+
+  keyword.addEventListener('input', function () {
+    if (timer) clearTimeout(timer);
+    var q = keyword.value.trim();
+    if (q.length < 2) {
+      hideList();
+      return;
+    }
+    timer = setTimeout(function () {
+      statusEl.style.display = 'block';
+      statusEl.textContent = '検索中...';
+      fetch('{{ url_for("hotel_suggest") }}?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            statusEl.textContent = data.error || '検索に失敗しました';
+            statusEl.style.display = 'block';
+            renderList([], data.error || '検索に失敗しました', true);
+            return;
+          }
+          var hotels = data.hotels || [];
+          var extra = '';
+          if (hotels.length === 0) {
+            extra = '該当する施設がありません。別のキーワードを試してください。';
+          } else if (data.recordCount != null && data.recordCount > hotels.length) {
+            extra = '候補は最大30件です（全' + data.recordCount + '件）。キーワードを絞ると探しやすいです。';
+          }
+          renderList(hotels, extra);
+          if (hotels.length > 0) {
+            statusEl.style.display = 'none';
+            statusEl.textContent = '';
+          } else if (extra) {
+            statusEl.textContent = extra;
+            statusEl.style.display = 'block';
+          } else {
+            statusEl.style.display = 'none';
+            statusEl.textContent = '';
+          }
+        })
+        .catch(function () {
+          statusEl.textContent = '通信エラーが発生しました';
+          statusEl.style.display = 'block';
+          renderList([], '通信エラーが発生しました', true);
+        });
+    }, 400);
+  });
+
+  keyword.addEventListener('keydown', function (e) {
+    var lis = listEl.querySelectorAll('li[role="option"]');
+    if (!lis.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, lis.length - 1);
+      highlightActive(lis);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      highlightActive(lis);
+    } else if (e.key === 'Enter' && activeIdx >= 0 && lastItems[activeIdx]) {
+      e.preventDefault();
+      selectHotel(lastItems[activeIdx]);
+    } else if (e.key === 'Escape') {
+      hideList();
+    }
+  });
+
+  function highlightActive(lis) {
+    lis.forEach(function (li, i) {
+      li.classList.toggle('active', i === activeIdx);
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!document.getElementById('hotel_ac_wrap').contains(e.target)) {
+      hideList();
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!hotelNo.value.trim()) {
+      alert('候補から施設を選んでください。');
+      return;
+    }
+
+    var progressEl = document.getElementById('search_progress');
+    var progressLogEl = document.getElementById('search_progress_log');
+    if (progressEl) progressEl.style.display = 'block';
+    if (progressLogEl) progressLogEl.textContent = '';
+
+    var fd = new FormData(form);
+
+    fetch('/api/vacancy-search-start', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok) {
+          throw new Error(data.error || '検索開始に失敗しました');
+        }
+        var jobId = data.job_id;
+
+        var timer = setInterval(function () {
+          fetch('/api/vacancy-search-status?job_id=' + encodeURIComponent(jobId))
+            .then(function (r) { return r.json(); })
+            .then(function (s) {
+              if (!s.ok) {
+                clearInterval(timer);
+                alert('進捗取得に失敗しました: ' + (s.error || 'Unknown error'));
+                return;
+              }
+              if (progressLogEl) {
+                progressLogEl.textContent = (s.logs || []).join('\\n');
+              }
+              if (s.status === 'done') {
+                clearInterval(timer);
+                window.location.href = '/?job_id=' + encodeURIComponent(jobId);
+              } else if (s.status === 'failed') {
+                clearInterval(timer);
+                alert('検索に失敗しました: ' + (s.error || 'Unknown error'));
+              }
+            })
+            .catch(function (err) {
+              clearInterval(timer);
+              alert('進捗取得に失敗しました: ' + String(err));
+            });
+        }, 1000);
+      })
+      .catch(function (err) {
+        if (progressEl) progressEl.style.display = 'none';
+        alert(String(err));
+      });
+  });
+
+  // 監視に追加（WebUIで選択したプラン＋部屋を保存）
+  var watchSaveBtn = document.getElementById('watch_save_btn');
+  if (watchSaveBtn) {
+    watchSaveBtn.addEventListener('click', function () {
+      var checked = document.querySelectorAll('.watch_check:checked');
+      var statusEl = document.getElementById('watch_save_status');
+      if (checked.length === 0) {
+        alert('監視したいプラン・部屋にチェックを入れてください。');
+        return;
+      }
+
+      var items = Array.prototype.slice.call(checked).map(function (el) {
+        return {
+          hotelNo: el.dataset.hotelNo || '',
+          planId: el.dataset.planId || '',
+          roomClass: el.dataset.roomClass || '',
+          mealText: el.dataset.mealText || '',
+          planName: el.dataset.planName || '',
+          roomName: el.dataset.roomName || '',
+          planListUrl: el.dataset.planListUrl || ''
+        };
+      });
+
+      var mode = (document.getElementById('checkin_date').value || '').trim() ? 'fixed' : 'flexible_default';
+      var dateInputs = document.querySelectorAll('.preferred_date_input');
+      var preferredDates = [];
+      Array.prototype.forEach.call(dateInputs, function (el) {
+        var v = (el.value || '').trim();
+        if (v) preferredDates.push(v);
+      });
+      var preferredDatesRaw = preferredDates.join(',');
+
+      var payload = {
+        items: items,
+        search: {
+          hotel_no: hotelNo.value,
+          stay_nights: document.getElementById('stay_nights').value,
+          room_num: document.getElementById('room_num').value,
+          adult_num: document.getElementById('adult_num').value,
+          up_class_num: document.getElementById('up_class_num').value,
+          low_class_num: document.getElementById('low_class_num').value,
+          infant_with_mb_num: document.getElementById('infant_with_mb_num').value,
+          infant_with_m_num: document.getElementById('infant_with_m_num').value,
+          infant_with_b_num: document.getElementById('infant_with_b_num').value,
+          infant_without_mb_num: document.getElementById('infant_without_mb_num').value,
+          preferred_checkin_dates: preferredDatesRaw,
+          mode: mode,
+          primaryStartOffsetDays: 75,
+          primaryEndOffsetDays: 90,
+          fallbackStartOffsetDays: 60,
+          fallbackEndOffsetDays: 90
+        }
+      };
+
+      if (statusEl) statusEl.textContent = '保存中...';
+
+      fetch('/api/watch/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || '保存に失敗しました');
+          if (statusEl) statusEl.textContent = '保存しました。';
+        })
+        .catch(function (err) {
+          if (statusEl) statusEl.textContent = '';
+          alert('保存失敗: ' + String(err));
+        });
+    });
+  }
+
+  var preferredAddBtn = document.getElementById('preferred_dates_add_btn');
+  if (preferredAddBtn) {
+    preferredAddBtn.addEventListener('click', function () {
+      var list = document.getElementById('preferred_dates_list');
+      if (!list) return;
+      var input = document.createElement('input');
+      input.type = 'date';
+      input.className = 'preferred_date_input';
+      input.value = '';
+      list.appendChild(input);
+    });
+  }
+})();
+  </script>
+</body>
+</html>

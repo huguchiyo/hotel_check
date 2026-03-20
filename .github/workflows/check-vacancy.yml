@@ -1,0 +1,40 @@
+# 楽天トラベル 空室監視 - 定期実行
+# 指定時刻に空室をチェックし、空室があれば LINE / メールで通知します
+name: 楽天トラベル空室チェック
+
+on:
+  schedule:
+    # 毎日 8:00, 12:00, 18:00 (JST) に実行（UTC で 23:00, 3:00, 9:00 の前日）
+    - cron: '0 23 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 9 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run vacancy check
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TO_USER_ID: ${{ secrets.LINE_TO_USER_ID }}
+          SEARCH_HOTEL_NO: ${{ secrets.SEARCH_HOTEL_NO }}
+          SEARCH_CHECKIN_DATE: ${{ secrets.SEARCH_CHECKIN_DATE }}
+          SEARCH_CHECKOUT_DATE: ${{ secrets.SEARCH_CHECKOUT_DATE }}
+          SEARCH_ADULT_NUM: ${{ secrets.SEARCH_ADULT_NUM }}
+          SEARCH_ROOM_NUM: ${{ secrets.SEARCH_ROOM_NUM }}
+          SEARCH_PLAN_KEYWORD: ${{ secrets.SEARCH_PLAN_KEYWORD }}
+          SEARCH_MAX_CHARGE: ${{ secrets.SEARCH_MAX_CHARGE }}
+        run: python main.py
